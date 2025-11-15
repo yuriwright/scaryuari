@@ -75,7 +75,7 @@ export const artworks: Artwork[] = [
         fullImage: '/art/camila-hdscan.jpeg',
 
         prints: [
-            { size: '11x8.5', stock: 1, price: 15 },
+            { size: '11x8.5', stock: 2, price: 15 },
         ],
     },
 
@@ -493,6 +493,22 @@ export const artworks: Artwork[] = [
 
         prints: [
             { size: '11x17', stock: 1, price: 20 },
+            { size: '1x1', stock: 1, price: 1 },
+        ]
+    },
+
+    /* #28: OH FUCK */
+    {
+        id: 28,
+        slug: 'oh-fuck',
+        title: 'oh fuck', 
+        iconImage: '/art/oh-fuck-icon.png',
+        fullImage: '/art/oh-fuck.jpg',
+        medium: 'acrylic and ink on canvas',
+        year: 2020,
+
+        prints: [
+        { size: '12.25x9.4', stock: 1, price: 18 },
         ]
     }
 

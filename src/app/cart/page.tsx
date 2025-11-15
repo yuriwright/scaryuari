@@ -69,9 +69,6 @@ export default function CartPage() {
                   <h3 className="text-red-600 font-mono font-bold mb-1">
                     {item.itemTitle}
                   </h3>
-                  <p className="text-red-600 font-mono text-xs mb-2">
-                    from: <i>"{item.artworkTitle}"</i>
-                  </p>
                   <p className="text-red-600 font-mono text-sm">
                     ${item.price.toFixed(2)}
                   </p>

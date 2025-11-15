@@ -3,21 +3,22 @@ import { SquareClient, SquareEnvironment } from 'square'
 
 export async function POST(request: Request) {
   try {
-    const { sourceId, amount, items } = await request.json()
+    const { sourceId, amount, items, customer } = await request.json()
 
     console.log('Payment request:', {
       amount,
       sourceId: sourceId ? 'present' : 'missing',
-      itemCount: items?.length || 0
+      itemCount: items?.length || 0,
+      hasCustomerInfo: !!customer
     })
 
     const client = new SquareClient({
-      token: process.env.SQUARE_ACCESS_TOKEN!,
-      environment: SquareEnvironment.Sandbox,
+      token: process.env.SQUARE_ACCESS_TOKEN!, // Use 'token' not 'accessToken'
+      environment: SquareEnvironment.Production, // Switch to Production
     })
 
-    // Make the payment request
-    const response = await client.payments.create({
+    // Prepare payment request
+    const paymentRequest: any = {
       sourceId,
       amountMoney: {
         amount: BigInt(amount),
@@ -26,24 +27,31 @@ export async function POST(request: Request) {
       idempotencyKey: crypto.randomUUID(),
       locationId: process.env.NEXT_PUBLIC_SQUARE_LOCATION_ID!,
       note: `Order: ${items.map((i: any) => i.itemTitle).join(', ')}`,
-    })
-
-    // Extract payment info from the response based on the actual structure
-    // From the logs, we can see the payment information is directly in the response.payment object
-    if (!response.payment) {
-      throw new Error('Payment response did not contain payment information');
     }
     
-    // Extract the order ID and receipt URL
-    const orderId = response.payment.id;
-    const receiptUrl = response.payment.receiptUrl;
+    // Add buyer email address if available
+    if (customer && customer.email) {
+      paymentRequest.buyerEmailAddress = customer.email
+    }
+
+    // Make the payment request
+    const response = await client.payments.create(paymentRequest)
+
+    // Use the working response structure
+    if (!response.payment) {
+      throw new Error('Payment response did not contain payment information')
+    }
     
-    console.log(`Payment successful: ID = ${orderId}, Receipt URL = ${receiptUrl}`);
+    const orderId = response.payment.id
+    const receiptUrl = response.payment.receiptUrl
+    
+    console.log(`Payment successful: ID = ${orderId}, Receipt URL = ${receiptUrl}`)
     
     return NextResponse.json({
       success: true,
       orderId: orderId,
       receipt: receiptUrl,
+      customerSaved: false // We'll add customer creation later
     })
   } catch (error: any) {
     console.error('Payment processing error:', error)

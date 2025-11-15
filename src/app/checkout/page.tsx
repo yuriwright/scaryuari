@@ -13,7 +13,19 @@ export default function CheckoutPage() {
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [card, setCard] = useState<any>(null)
-  const [isProcessingRedirect, setIsProcessingRedirect] = useState(false) // Add this state
+  const [isProcessingRedirect, setIsProcessingRedirect] = useState(false)
+  
+  // Customer information state
+  const [email, setEmail] = useState('')
+  const [firstName, setFirstName] = useState('')
+  const [lastName, setLastName] = useState('')
+  const [addressLine1, setAddressLine1] = useState('')
+  const [addressLine2, setAddressLine2] = useState('')
+  const [city, setCity] = useState('')
+  const [state, setState] = useState('')
+  const [zipCode, setZipCode] = useState('')
+  const [country, setCountry] = useState('US')
+  const [phoneNumber, setPhoneNumber] = useState('')
 
   // Redirect if cart is empty, but only if not in the middle of processing a payment
   useEffect(() => {
@@ -23,69 +35,131 @@ export default function CheckoutPage() {
   }, [items, router, isProcessingRedirect])
 
   // Initialize Square payment form
-useEffect(() => {
-  if (typeof window === 'undefined' || items.length === 0) return
+  useEffect(() => {
+  console.log('useEffect triggered!', { 
+    windowUndefined: typeof window === 'undefined', 
+    itemsLength: items.length 
+  })
+  
+  if (typeof window === 'undefined' || items.length === 0) {
+    console.log('Early return from useEffect')
+    return
+  }
 
   let cardElement: any = null
   let isInitialized = false
 
   const initializeSquare = async () => {
-    if (isInitialized) return
-    isInitialized = true
+    console.log('initializeSquare function called!')
+  if (isInitialized) return
+  isInitialized = true
 
-    try {
-      // Clear any existing content first
-      const container = document.getElementById('card-container')
-      if (container) {
-        container.innerHTML = ''
-      }
-
-      // Load Square Web SDK
-      if (!(window as any).Square) {
-        const script = document.createElement('script')
-        script.src = 'https://sandbox.web.squarecdn.com/v1/square.js'
-        script.async = true
-        document.body.appendChild(script)
-        
-        await new Promise((resolve) => {
-          script.onload = resolve
-        })
-      }
-
-      const payments = (window as any).Square.payments(
-        process.env.NEXT_PUBLIC_SQUARE_APPLICATION_ID,
-        process.env.NEXT_PUBLIC_SQUARE_LOCATION_ID
-      )
-
-      cardElement = await payments.card()
-      await cardElement.attach('#card-container')
-      setCard(cardElement)
-    } catch (e) {
-      console.error('Square initialization error:', e)
-      setError('Failed to load payment form. Please refresh the page.')
+  try {
+    // Clear any existing content first
+    const container = document.getElementById('card-container')
+    if (container) {
+      container.innerHTML = ''
     }
+
+    // Debug environment variables
+    console.log('App ID:', process.env.NEXT_PUBLIC_SQUARE_APPLICATION_ID)
+    console.log('Location ID:', process.env.NEXT_PUBLIC_SQUARE_LOCATION_ID)
+
+    // Load Square Web SDK
+    if (!(window as any).Square) {
+      console.log('Loading Square.js script...')
+      const script = document.createElement('script')
+      script.src = 'https://web.squarecdn.com/v1/square.js'
+      script.async = true
+      document.body.appendChild(script)
+      
+      await new Promise((resolve, reject) => {
+        script.onload = () => {
+          console.log('Square.js script loaded successfully')
+          resolve(true)
+        }
+        script.onerror = () => {
+          console.error('Failed to load Square.js script')
+          reject(new Error('Failed to load Square.js'))
+        }
+      })
+    }
+
+    console.log('Square object:', (window as any).Square)
+    console.log('Creating payments with production environment...')
+
+    const payments = (window as any).Square.payments(
+      process.env.NEXT_PUBLIC_SQUARE_APPLICATION_ID,
+      process.env.NEXT_PUBLIC_SQUARE_LOCATION_ID,
+      'production'
+    )
+
+    console.log('Payments object created:', payments)
+    console.log('Creating card element...')
+
+    cardElement = await payments.card()
+    console.log('Card element created:', cardElement)
+    
+    await cardElement.attach('#card-container')
+    console.log('Card element attached successfully')
+    
+    setCard(cardElement)
+  } catch (e) {
+    console.error('Square initialization error:', e)
+    setError('Failed to load payment form. Please refresh the page.')
   }
+}
 
-  const timeoutId = setTimeout(initializeSquare, 100)
+    const timeoutId = setTimeout(initializeSquare, 100)
 
-  // Cleanup function
-  return () => {
-    clearTimeout(timeoutId)
-    if (cardElement) {
-      try {
-        cardElement.destroy()
-      } catch (e) {
-        console.log('Card cleanup error:', e)
+    // Cleanup function
+    return () => {
+      clearTimeout(timeoutId)
+      if (cardElement) {
+        try {
+          cardElement.destroy()
+        } catch (e) {
+          console.log('Card cleanup error:', e)
+        }
       }
     }
+  }, [items])
+
+  const validateForm = (): boolean => {
+    if (!email) {
+      setError('Email is required')
+      return false
+    }
+    
+    if (!firstName || !lastName) {
+      setError('Name is required')
+      return false
+    }
+    
+    if (!addressLine1 || !city || !state || !zipCode) {
+      setError('Shipping address is required')
+      return false
+    }
+    
+    // Basic email validation
+    if (!/^\S+@\S+\.\S+$/.test(email)) {
+      setError('Please enter a valid email address')
+      return false
+    }
+    
+    return true
   }
-}, [items])
 
   const handlePayment = async (e: React.FormEvent) => {
     e.preventDefault()
     
     if (!card) {
       setError('Payment form not ready')
+      return
+    }
+    
+    // Validate customer information form
+    if (!validateForm()) {
       return
     }
 
@@ -97,7 +171,7 @@ useEffect(() => {
       const result = await card.tokenize()
       
       if (result.status === 'OK') {
-        // Send payment to your API
+        // Send payment and customer info to your API
         const response = await fetch('/api/process-payment', {
           method: 'POST',
           headers: {
@@ -107,6 +181,18 @@ useEffect(() => {
             sourceId: result.token,
             amount: Math.round(totalPrice * 100), // Convert to cents
             items: items,
+            customer: {
+              email,
+              firstName,
+              lastName,
+              addressLine1,
+              addressLine2,
+              city,
+              state,
+              zipCode,
+              country,
+              phoneNumber
+            }
           }),
         })
 
@@ -209,13 +295,149 @@ useEffect(() => {
               </Link>
             </div>
 
-            {/* Payment Form */}
+            {/* Payment Form with Customer Info */}
             <div>
-              <h2 className="text-red-600 font-mono text-xl mb-4">
-                <i>payment details</i>
-              </h2>
-
               <form onSubmit={handlePayment} className="bg-stone-900 outline outline-pink-500 outline-offset-4 p-6">
+                {/* Customer Information */}
+                <h2 className="text-red-600 font-mono text-xl mb-4">
+                  <i>your information</i>
+                </h2>
+
+                <div className="mb-6 space-y-4">
+                  <div>
+                    <label htmlFor="email" className="block text-red-600 font-mono text-sm mb-1">email*</label>
+                    <input 
+                      type="email"
+                      id="email"
+                      value={email}
+                      onChange={(e) => setEmail(e.target.value)}
+                      required
+                      className="w-full bg-stone-800 border border-red-600 text-red-600 font-mono p-2 focus:outline-none focus:border-red-400"
+                    />
+                  </div>
+                  
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <label htmlFor="firstName" className="block text-red-600 font-mono text-sm mb-1">first name*</label>
+                      <input 
+                        type="text"
+                        id="firstName"
+                        value={firstName}
+                        onChange={(e) => setFirstName(e.target.value)}
+                        required
+                        className="w-full bg-stone-800 border border-red-600 text-red-600 font-mono p-2 focus:outline-none focus:border-red-400"
+                      />
+                    </div>
+                    <div>
+                      <label htmlFor="lastName" className="block text-red-600 font-mono text-sm mb-1">last name*</label>
+                      <input 
+                        type="text"
+                        id="lastName"
+                        value={lastName}
+                        onChange={(e) => setLastName(e.target.value)}
+                        required
+                        className="w-full bg-stone-800 border border-red-600 text-red-600 font-mono p-2 focus:outline-none focus:border-red-400"
+                      />
+                    </div>
+                  </div>
+                  
+                  <div>
+                    <label htmlFor="phone" className="block text-red-600 font-mono text-sm mb-1">phone number</label>
+                    <input 
+                      type="tel"
+                      id="phone"
+                      value={phoneNumber}
+                      onChange={(e) => setPhoneNumber(e.target.value)}
+                      className="w-full bg-stone-800 border border-red-600 text-red-600 font-mono p-2 focus:outline-none focus:border-red-400"
+                    />
+                  </div>
+                </div>
+
+                {/* Shipping Address */}
+                <h2 className="text-red-600 font-mono text-xl mb-4">
+                  <i>shipping address</i>
+                </h2>
+
+                <div className="mb-6 space-y-4">
+                  <div>
+                    <label htmlFor="addressLine1" className="block text-red-600 font-mono text-sm mb-1">address line 1*</label>
+                    <input 
+                      type="text"
+                      id="addressLine1"
+                      value={addressLine1}
+                      onChange={(e) => setAddressLine1(e.target.value)}
+                      required
+                      className="w-full bg-stone-800 border border-red-600 text-red-600 font-mono p-2 focus:outline-none focus:border-red-400"
+                    />
+                  </div>
+                  
+                  <div>
+                    <label htmlFor="addressLine2" className="block text-red-600 font-mono text-sm mb-1">address line 2</label>
+                    <input 
+                      type="text"
+                      id="addressLine2"
+                      value={addressLine2}
+                      onChange={(e) => setAddressLine2(e.target.value)}
+                      className="w-full bg-stone-800 border border-red-600 text-red-600 font-mono p-2 focus:outline-none focus:border-red-400"
+                    />
+                  </div>
+                  
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <label htmlFor="city" className="block text-red-600 font-mono text-sm mb-1">city*</label>
+                      <input 
+                        type="text"
+                        id="city"
+                        value={city}
+                        onChange={(e) => setCity(e.target.value)}
+                        required
+                        className="w-full bg-stone-800 border border-red-600 text-red-600 font-mono p-2 focus:outline-none focus:border-red-400"
+                      />
+                    </div>
+                    <div>
+                      <label htmlFor="state" className="block text-red-600 font-mono text-sm mb-1">state*</label>
+                      <input 
+                        type="text"
+                        id="state"
+                        value={state}
+                        onChange={(e) => setState(e.target.value)}
+                        required
+                        className="w-full bg-stone-800 border border-red-600 text-red-600 font-mono p-2 focus:outline-none focus:border-red-400"
+                      />
+                    </div>
+                  </div>
+                  
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <label htmlFor="zipCode" className="block text-red-600 font-mono text-sm mb-1">zip code*</label>
+                      <input 
+                        type="text"
+                        id="zipCode"
+                        value={zipCode}
+                        onChange={(e) => setZipCode(e.target.value)}
+                        required
+                        className="w-full bg-stone-800 border border-red-600 text-red-600 font-mono p-2 focus:outline-none focus:border-red-400"
+                      />
+                    </div>
+                    <div>
+                      <label htmlFor="country" className="block text-red-600 font-mono text-sm mb-1">country*</label>
+                      <input 
+                        type="text"
+                        id="country"
+                        value={country}
+                        onChange={(e) => setCountry(e.target.value)}
+                        required
+                        className="w-full bg-stone-800 border border-red-600 text-red-600 font-mono p-2 focus:outline-none focus:border-red-400"
+                      />
+                    </div>
+                  </div>
+                </div>
+
+                {/* Payment Information */}
+                <h2 className="text-red-600 font-mono text-xl mb-4">
+                  <i>payment details</i>
+                </h2>
+
                 {/* Square Card Element */}
                 <div id="card-container" className="mb-6"></div>
 

@@ -46,7 +46,7 @@ export default function ArtPage({ params }: Props) {
             type: 'print',
             artworkSlug: artwork.slug,
             artworkTitle: artwork.title,
-            itemTitle: `${print.size} print`,
+            itemTitle: `${artwork.title}, ${print.size} print`,
             price: print.price || 0,
             quantity: 1,
             maxStock: print.stock,
