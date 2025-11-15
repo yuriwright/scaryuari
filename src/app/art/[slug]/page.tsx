@@ -86,8 +86,7 @@ const handleAddPrint = (print: { size: string; stock: number; price?: number }, 
                                 <p className="text-red-600 text-center font-mono mb-3">
                                     <i>prints available:</i>
                                 </p>
-                                {artwork.prints.map((print, index) => (
-                                    print.stock > 0 && (
+{artwork.prints?.map((print, index) => (                                    print.stock > 0 && (
                                     <div key={index} className="text-center font-mono text-xs mb-2">
                                         <p className="text-red-600">
                                             {print.size} print <i>({print.stock} in stock)</i>
