@@ -36,7 +36,7 @@ export default function AntiGreetingCardPage() {
     const handleAddCard = () => {
         addItem({
             id: `antigreeting-${foundCard.slug}`,
-            type: 'antigreetingcard',
+            type: 'antiGreetingCard',
             artworkSlug: parentArtwork.slug,
             artworkTitle: parentArtwork.title,
             itemTitle: foundCard.title,
