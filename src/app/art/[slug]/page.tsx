@@ -31,7 +31,7 @@ export default function ArtPage({ params }: Props) {
 
     // check if prints are available
     const hasPrints = artwork.prints && artwork.prints.length > 0
-    const allPrintsOutOfStock = hasPrints && artwork.prints.every(print => print.stock === 0)
+    const allPrintsOutOfStock = hasPrints && artwork.prints!.every(print => print.stock === 0)
     const shouldShowPrintInquiry = !hasPrints || allPrintsOutOfStock
 
       // check if merch is available
