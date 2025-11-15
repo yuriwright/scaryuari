@@ -40,8 +40,7 @@ export default function ArtPage({ params }: Props) {
     const hasMerch = hasAntiGreetingCards || hasStickers
 
     // handling adding a print 
-    const handleAddPrint = (print: typeof artwork.prints[0], index: number) => {
-        addItem({
+const handleAddPrint = (print: { size: string; stock: number; price?: number }, index: number) => {        addItem({
             id: `print-${artwork.slug}-${index}`,
             type: 'print',
             artworkSlug: artwork.slug,
